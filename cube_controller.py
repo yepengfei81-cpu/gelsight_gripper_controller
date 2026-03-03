@@ -285,12 +285,14 @@ class CubeController(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Cube Controller (Position & Orientation)")
-        self.setGeometry(100, 100, 800, 600)
+        self.setGeometry(100, 100, 800, 700)  # 增加窗口高度
         
         # Initialize position (initial position in DH coordinates)
         self.position = np.array([-0.2057, 0.0, 0.0])
         # Initialize orientation (rotation angles around X/Y/Z axes, in degrees)
         self.orientation = np.array([0.0, 0.0, 0.0])
+        # Initialize gripper distance (cube half width in meters)
+        self.gripper_half_distance = 0.01  # 默认1cm半宽度，即2cm总距离
         
         # Define offsets
         self.offset_x = -0.2057
@@ -304,6 +306,27 @@ class CubeController(QMainWindow):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         main_layout = QVBoxLayout(central_widget)
+        
+        # ===== Gripper Distance Control Area =====
+        gripper_group = QGroupBox("Gripper Distance Control")
+        gripper_layout = QVBoxLayout()
+        gripper_group.setLayout(gripper_layout)
+        main_layout.addWidget(gripper_group)
+        
+        gripper_control_layout = QHBoxLayout()
+        
+        # Gripper distance slider
+        self.gripper_label = QLabel(f"Gripper Distance: {self.gripper_half_distance * 2 * 1000:.1f} mm (Half: {self.gripper_half_distance * 1000:.1f} mm)")
+        gripper_control_layout.addWidget(self.gripper_label)
+        
+        self.gripper_slider = QSlider(Qt.Horizontal)
+        self.gripper_slider.setMinimum(5)    # 最小5mm半宽度 = 10mm总距离
+        self.gripper_slider.setMaximum(50)   # 最大50mm半宽度 = 100mm总距离
+        self.gripper_slider.setValue(10)     # 默认10mm半宽度 = 20mm总距离
+        self.gripper_slider.valueChanged.connect(self.update_gripper_distance)
+        gripper_control_layout.addWidget(self.gripper_slider)
+        
+        gripper_layout.addLayout(gripper_control_layout)
         
         # ===== Offset Settings Area =====
         offset_group = QGroupBox("Offset Settings")
@@ -612,7 +635,19 @@ class CubeController(QMainWindow):
         self.update_orientation_display()
         
         self.status_label.setText(f"Orientation updated: RX={self.orientation[0]:.1f}°, RY={self.orientation[1]:.1f}°, RZ={self.orientation[2]:.1f}°")
-    
+
+    def update_gripper_distance(self):
+        """Update gripper distance (cube half width)"""
+        # Slider value is in mm, convert to meters
+        self.gripper_half_distance = self.gripper_slider.value() / 1000.0
+        
+        # Update label
+        total_distance_mm = self.gripper_half_distance * 2 * 1000
+        half_distance_mm = self.gripper_half_distance * 1000
+        self.gripper_label.setText(f"Gripper Distance: {total_distance_mm:.1f} mm (Half: {half_distance_mm:.1f} mm)")
+        
+        self.status_label.setText(f"Gripper distance updated: {total_distance_mm:.1f} mm")
+
     def update_position_display(self):
         """Update position labels"""
         self.x_label.setText(f"DH Coordinate X: {self.position[0]:.4f}")
@@ -697,6 +732,10 @@ class CubeController(QMainWindow):
         """Get rotation angles (RX, RY, RZ) in degrees"""
         return self.orientation.copy()
 
+    def get_gripper_half_distance(self):
+        """Get gripper half distance (cube half width) in meters"""
+        return self.gripper_half_distance
+    
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = CubeController()
