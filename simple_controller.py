@@ -115,14 +115,14 @@ class ArmIK:
         self.arm_side = arm_side
         params = {
             "left_arm": {
-                "a1": -0.042, "d1": 0.041, "d2": 0.02825,
+                "a1": -0.042183, "d1": 0.041, "d2": 0.020255,  # d2: 0.02825 → 0.020255
                 "q5_offset": 0, "angle_sign": -1, "q3_sign": -1,
                 "q2_transform": lambda q: radians(90 - q),
                 "q3_transform": lambda q: radians(q),
                 "q4_formula": lambda q2, q3, q234: (pi/2 - q234) - (q2 + q3)
             },
             "right_arm": {
-                "a1": -0.042, "d1": -0.041, "d2": -0.02825,
+                "a1": -0.042183, "d1": -0.041, "d2": -0.020255,  # d2: -0.02825 → -0.020245
                 "q5_offset": 0, "angle_sign": 1, "q3_sign": 1,
                 "q2_transform": lambda q: radians(q - 90),
                 "q3_transform": lambda q: radians(-q),
@@ -130,9 +130,9 @@ class ArmIK:
             }
         }
         self.params = params[arm_side]
-        self.a2 = 0.0935
-        self.a3 = 0.1053
-        self.a4 = 0.0897
+        self.a2 = 0.090
+        self.a3 = 0.0938
+        self.a4 = 0.0904
 
     def is_valid_candidate(self, q2_val, q3_val, q4_val):
         q2_transform = self.params["q2_transform"]
@@ -166,11 +166,9 @@ class ArmIK:
             pz -= (d1 + d2)
             rot1, rot2, rot3 = target_rot_mat[:, 0], target_rot_mat[:, 1], target_rot_mat[:, 2]
             
-            q1_temp = -(atan2(py, -px))
-            gap_theta = asin(0.062 / (sqrt(px**2 + py**2)))
-            q1 = q1_temp + gap_theta
+            q1 = -(atan2(py, -px))
             
-            r = 0.062 / tan(gap_theta)
+            r = sqrt(px**2 + py**2)
             h = pz
             
             q234 = atan2((rot3[0] * cos(q1) + rot3[1] * sin(q1)), -(rot3[2]))
@@ -206,7 +204,7 @@ class ArmIK:
             if q23_2 < -90.0: q23_2 += 360.0
 
             sorted_q = sorted([q2_1, q2_2, q23_1, q23_2], reverse=True)
-            q3_offset = degrees(atan2(0.01681, 0.1041)) * q3_sign
+            q3_offset = degrees(atan2(0.014926, 0.093814)) * q3_sign
 
             q2_1_val, q3_1_val = sorted_q[0], sorted_q[0] - sorted_q[2] + q3_offset
             q4_1_val = q4_formula((q2_transform(q2_1_val)), (q3_transform(q3_1_val)), q234)
@@ -248,19 +246,19 @@ def compute_forward_kinematics(arm_side, sim):
     q5 = sim.data.get_joint_qpos(f"{joint_prefix}_joint5")
 
     if arm_side == "left_arm":
-        T_base_to_joint1 = dh_transform_matrix(0, -0.042, 0.041, 0)
-        T_joint1_to_joint2 = dh_transform_matrix(-math.pi/2, 0, 0.02825, q1)
-        T_joint2_to_joint3 = dh_transform_matrix(0, -0.0935, 0.062, q2 + 0.0)
-        T_joint3_to_joint4 = dh_transform_matrix(0, -0.1053, 0, q3 + 0.16)
-        T_joint4_to_joint5 = dh_transform_matrix(math.pi/2, -0.0085, 0, q4 + 1.41)
-        T_joint5_to_end = dh_transform_matrix(0, 0, -0.0893, q5)
+        T_base_to_joint1 = dh_transform_matrix(0, -0.042183, 0.041, 0)
+        T_joint1_to_joint2 = dh_transform_matrix(-math.pi/2, 0, 0.020255, q1)
+        T_joint2_to_joint3 = dh_transform_matrix(0, -0.090, 0.0, q2 + 0.0)   # 0.062 → 0
+        T_joint3_to_joint4 = dh_transform_matrix(0, -0.0938, 0, q3 + 0.158)
+        T_joint4_to_joint5 = dh_transform_matrix(math.pi/2, -0.0085, 0, q4 + 1.413)
+        T_joint5_to_end = dh_transform_matrix(0, 0, -0.0904, q5)
     else:
-        T_base_to_joint1 = dh_transform_matrix(0, -0.042, -0.041, 0)
-        T_joint1_to_joint2 = dh_transform_matrix(math.pi/2, 0, -0.02825, q1)
-        T_joint2_to_joint3 = dh_transform_matrix(0, -0.0935, -0.062, q2 + 0.0)
-        T_joint3_to_joint4 = dh_transform_matrix(0, -0.1053, 0, q3 + 0.16)
-        T_joint4_to_joint5 = dh_transform_matrix(math.pi/2, -0.0085, 0, q4 + 1.41)
-        T_joint5_to_end = dh_transform_matrix(0, 0, -0.0893, q5)
+        T_base_to_joint1 = dh_transform_matrix(0, -0.042183, -0.041, 0)
+        T_joint1_to_joint2 = dh_transform_matrix(math.pi/2, 0, -0.020255, q1)
+        T_joint2_to_joint3 = dh_transform_matrix(0, -0.090, 0.0, q2 + 0.0)   # -0.062 → 0
+        T_joint3_to_joint4 = dh_transform_matrix(0, -0.0938, 0, q3 + 0.158)
+        T_joint4_to_joint5 = dh_transform_matrix(math.pi/2, -0.0085, 0, q4 + 1.413)
+        T_joint5_to_end = dh_transform_matrix(0, 0, -0.0904, q5)
 
     T = T_base_to_joint1 @ T_joint1_to_joint2 @ T_joint2_to_joint3 @ T_joint3_to_joint4 @ T_joint4_to_joint5 @ T_joint5_to_end
     position = T[:3, 3]
